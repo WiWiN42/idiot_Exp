@@ -26,10 +26,32 @@ POSSIBILITY OF SUCH DAMAGE.
 from __future__ import print_function
 
 import argparse
+import subprocess
 
-# Read Model and Arguments File Path from Command Line
+# Read Files(path) from Command Line
 
 parser = argparse.ArgumentParser(description='Experiment runner')
-parser.add_argument('train_script', type=str, help='the file path of model trainin script')
+parser.add_argument('model', type=str, help='the file path of model training script')
 parser.add_argument('arg_yml', type=str, help='arguments yaml file')
 args = parser.parse_args()
+
+# Hyper-parameter Sweep
+
+# Execute Command to Run Task
+
+def exec_cmd(cmd):
+    """
+    Execute a command and print stderr/stdout to the console
+    """
+    result = subprocess.run(cmd, stderr=subprocess.PIPE, shell=True)
+    if result.stderr:
+        message = result.stderr.decode("utf-8")
+        print(message)
+
+def run_experiment():
+    pass
+
+if __name__ == '__main__':
+
+
+    pass
