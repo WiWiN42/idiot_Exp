@@ -31,26 +31,67 @@ import subprocess
 
 import yaml
 
+from .util import nested_dic, get_field
+
 parser = argparse.ArgumentParser(description='Experiment runner')
 parser.add_argument('--arg_yml', type=str, help='arguments yaml file')
+parser.add_argument('--exp_name', type=str, default='', help='the name for a round of experiment')
 ARGS = parser.parse_args()
 
-def load_yml():
-    pass
+# Load Argument File and Construct Command
 
-def assemble_suit():
-    pass
-
-def construct_cmd(model_file, arg_suit):
-    """Insert compiler and model path into arg_suit.
-
-    model_file is a path string and arg_suit should be list.
+def load_yml(arg_path):
+    """Load YAML file and check format.
 
     Args:
-        model_file:
-        arg_suit:
+        arg_path: the path of argument file
+
+    Returns:
+        raw_args: argument read from given path, of python dictionary
+
+    Exception:
     """
-    pass
+    if os.path.exists(arg_path):
+        raw_args = yaml.load(open(arg_path), Loader=yaml.FullLoader)
+
+        # the YAML can not be nested more than three layers
+        if nested_dic(raw_args):
+            raise Exception("Format error, please rearrange you parameters in input YAML file")
+        else:
+            return raw_args
+
+    else:
+        raise Exception("couldn\'t find argument file {}".format(arg_path))
+
+def assemble_suit(raw_dic):
+    """Get cross product of all parameters and assemble into suits.
+
+    Args:
+        raw_dic: a python dictionary read from yaml file
+
+    Returns:
+        suits:
+
+    Exception:
+    """
+    command = get_field(raw_dic, 'COMMAND')
+    para = get_field(raw_dic, 'PARAMETER', required=False)
+
+    
+
+    
+
+    return suits
+
+def construct_cmd(suit):
+    cmd = ''
+    for key, val in suit.items():
+        if type(val) is bool:
+            if val is True:
+                cmd += '--{} '.format(key)
+        elif val != 'None':
+            cmd += '--{} {} '.format(key, val)
+    return cmd
 
 def exec_cmd(cmd):
     """
