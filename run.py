@@ -25,19 +25,24 @@ POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import print_function
 
+import os
 import argparse
 import subprocess
 
-# Read Files(path) from Command Line
+import yaml
 
-parser = argparse.ArgumentParser(description='Experiment runner')
-parser.add_argument('model', type=str, help='the file path of model training script')
-parser.add_argument('arg_yml', type=str, help='arguments yaml file')
-args = parser.parse_args()
+def construct_cmd(model_file, arg_suit):
+    """Insert compiler and model path into arg_suit.
 
-# Hyper-parameter Sweep
+    model_file is a path string and arg_suit should be list.
 
-# Execute Command to Run Task
+    Args:
+        model_file:
+        arg_suit:
+    """
+    arg_suit.insert(0, COMPILER)
+    arg_suit.insert(0, model_file)
+
 
 def exec_cmd(cmd):
     """
@@ -48,10 +53,43 @@ def exec_cmd(cmd):
         message = result.stderr.decode("utf-8")
         print(message)
 
-def run_experiment():
-    pass
+def run_experiment(model, arg_suits):
+    """Run experiment based on given model and argument suits.
+
+    Note that model is a plain string not any type of I/O stream, and arg_suits is a list of parameter suit.
+
+    Args:
+        model: file path to target model file
+        arg_suits: cross product of input argument yaml file
+
+    Exception:
+
+    """
+    # check model file existence
+    if os.path.exists(model):
+        for suit in arg_suits:
+            # construct commands
+            cmd = construct_cmd(model, suit)
+            # execute constructed command
+            exec_cmd(cmd)
+    else:
+        raise Exception("couldn\'t find model file {}".format(model))
 
 if __name__ == '__main__':
 
+    COMPILER = 'python3'
 
-    pass
+    # Read model and argument file
+    parser = argparse.ArgumentParser(description='Experiment runner')
+    parser.add_argument('model', type=str, help='the file path of model training script')
+    parser.add_argument('arg_yml', type=str, help='arguments yaml file')
+    args = parser.parse_args()
+
+    #TODO
+    # Load argument file
+
+    #TODO
+    # Prepare all possible argument suits
+
+    # Run experiment
+    run_experiment(model, arg_suits)
