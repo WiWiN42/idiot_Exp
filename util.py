@@ -9,10 +9,10 @@ def check_dic(dic):
     Returns:
         state: bool indicates the result of checking
     """
-    state = True
+    state = False
     for top_k, top_v in dic.items():
         if isinstance(top_v, (dict)):
             for k, v in top_v.item():
                 if isinstance(v, (dict)):
-                    state = False
+                    state = True
     return state
