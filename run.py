@@ -31,6 +31,16 @@ import subprocess
 
 import yaml
 
+parser = argparse.ArgumentParser(description='Experiment runner')
+parser.add_argument('--arg_yml', type=str, help='arguments yaml file')
+ARGS = parser.parse_args()
+
+def load_yml():
+    pass
+
+def assemble_suit():
+    pass
+
 def construct_cmd(model_file, arg_suit):
     """Insert compiler and model path into arg_suit.
 
@@ -40,9 +50,7 @@ def construct_cmd(model_file, arg_suit):
         model_file:
         arg_suit:
     """
-    arg_suit.insert(0, COMPILER)
-    arg_suit.insert(0, model_file)
-
+    pass
 
 def exec_cmd(cmd):
     """
@@ -77,19 +85,11 @@ def run_experiment(model, arg_suits):
 
 if __name__ == '__main__':
 
-    COMPILER = 'python3'
-
-    # Read model and argument file
-    parser = argparse.ArgumentParser(description='Experiment runner')
-    parser.add_argument('model', type=str, help='the file path of model training script')
-    parser.add_argument('arg_yml', type=str, help='arguments yaml file')
-    args = parser.parse_args()
-
-    #TODO
     # Load argument file
+    raw_args = load_yml(ARGS.arg_yml)
 
-    #TODO
     # Prepare all possible argument suits
+    arg_suits = assemble_suit(raw_args)
 
     # Run experiment
-    run_experiment(model, arg_suits)
+    run_experiment(arg_suits)
