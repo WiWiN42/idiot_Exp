@@ -1,14 +1,19 @@
 # idiot_ML
 
-## The basic logic of this project:
+## Code Logic
 
-1. Read model file, argument file (both of which are strings) and result folder from command line
-2. Prepare parameter suits based on the given argument file
-3. For each parameter suit, we execute the model file with this suit
-4. Store the output of each run into specified folder
+1. Read argument file from command line (format specified)
+2. Construct argument suit based on user's and default argument file
+3. Run model on every argument suit
 
-## todo
+## Obstacle
 
-- 对于读入的model和argument，以及result的文件路径是否有要求
-- 参数文件的格式具体要求，结果保存的具体格式要求
-- 如果一次实验的次数很多，总的内存占用超过了指定的gpu数量的总内存，如何确定worker（run次数）数量
+- determine the memory of a round of experiment needed so that we can take advantage of GPU capability
+
+## Argument Format
+
+The arguments should stored in YAML file. There are two kind of argument file:
+- default arguments
+- user's arguments
+
+run.py will detect whether the user argument file contains 'MODEL' fild, since model file must be specified in user's argument. Then it will check out "COMMAND' fild to figure out what kind of compiler user would like to use to run model script, if there is no 'COMMAND' fild in user's argument file, the program will use defalt, that is 'python3'
