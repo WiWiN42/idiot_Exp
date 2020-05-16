@@ -1,0 +1,6 @@
+cmd: 'python3'
+model: './SAA-ZSL/gan/base.py'
+
+para:
+  dataroot: ''
+  dataset: ''
