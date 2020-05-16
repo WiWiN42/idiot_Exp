@@ -28,8 +28,8 @@ from __future__ import print_function
 import os
 import argparse
 import subprocess
-
 import yaml
+import itertools
 
 from .util import nested_dic, get_field
 
@@ -54,34 +54,65 @@ def load_yml(arg_path):
     if os.path.exists(arg_path):
         raw_args = yaml.load(open(arg_path), Loader=yaml.FullLoader)
 
-        # the YAML can not be nested more than three layers
+        # make sure YAML file nested less than 2 layers
         if nested_dic(raw_args):
             raise Exception("Format error, please rearrange you parameters in input YAML file")
-        else:
-            return raw_args
 
     else:
         raise Exception("couldn\'t find argument file {}".format(arg_path))
 
-def assemble_suit(raw_dic):
-    """Get cross product of all parameters and assemble into suits.
+    return raw_args
+
+def islist(elem):
+    return type(elem) is list or type(elem) is tuple
+
+def cross_product_hparams(hparams):
+    """Get all possible permutations of hyper-parameter values.
 
     Args:
-        raw_dic: a python dictionary read from yaml file
+        hparams: python dict, where each key is the name of a commandline arg and the value is the target value of the arg. However any arg can also be a list and so this function will calculate the cross product for all combinations of all args.
 
     Returns:
-        suits:
-
-    Exception:
+        expanded_hparams:
+        num_cases:
     """
-    command = get_field(raw_dic, 'COMMAND')
-    para = get_field(raw_dic, 'PARAMETER', required=False)
+    hparam_values = []
+
+    # turn every hyperparam into a list, to prep for itertools.product
+    for elem in hparams.values():
+        if islist(elem):
+            hparam_values.append(elem)
+        else:
+            hparam_values.append([elem])
+
+    expanded_hparams = itertools.product(*hparam_values)
+
+    # have to do this in order to know length
+    expanded_hparams, dup_expanded = itertools.tee(expanded_hparams, 2)
+    expanded_hparams = list(expanded_hparams)
+    num_cases = len(list(dup_expanded))
+
+    return expanded_hparams, num_cases
+
+# def assemble_suit(raw_dic):
+#     """Get cross product of all parameters and assemble into suits.
+
+#     Args:
+#         raw_dic: a python dictionary containing arguments read from yaml file,
+
+#     Returns:
+#         suits:
+
+#     Exception:
+#     """
+#     command = get_field(raw_dic, 'CMD')
+#     para = get_field(raw_dic, 'PARA', required=False)
 
     
 
     
 
-    return suits
+#     return suits
 
 def construct_cmd(suit):
     cmd = ''
