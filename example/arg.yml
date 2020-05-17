@@ -1,6 +1,6 @@
-cmd: 'python3'
-model: './SAA-ZSL/gan/base.py'
-
-para:
-  dataroot: ''
-  dataset: ''
+CMD: 'python3'
+MODEL: './SAA-ZSL/gan/base.py'
+PARA:
+  dataroot: 'path to your dataset'
+  dataset: ['AWA', 'CUB']
+  lr: [0.1, 0.2]
