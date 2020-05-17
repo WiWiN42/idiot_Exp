@@ -1,3 +1,4 @@
+CONFIG: 'path to your own configuration'
 CMD: 'python3'
 MODEL: './SAA-ZSL/gan/base.py'
 PARA:
