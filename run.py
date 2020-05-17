@@ -30,41 +30,58 @@ import argparse
 import subprocess
 import yaml
 import itertools
-
-from .util import nested_dic, get_field
+import wget
 
 parser = argparse.ArgumentParser(description='Experiment runner')
-parser.add_argument('--arg_yml', type=str, help='arguments yaml file')
-parser.add_argument('--exp_name', type=str, default='', help='the name for a round of experiment')
+parser.add_argument('--exp_yml', '-a', type=str, default='', help='arguments yaml file')
+# parser.add_argument('--exp_name', type=str, default='', help='the name for a round of experiment')
+parser.add_argument('--config_yml', '-c', type=str, default='', help='configuration yaml file')
 ARGS = parser.parse_args()
 
-# Load Argument File and Construct Command
-
-def load_yml(arg_path):
-    """Load YAML file and check format.
-
-    Args:
-        arg_path: the path of argument file
-
-    Returns:
-        raw_args: argument read from given path, of python dictionary
-
-    Exception:
-    """
-    if os.path.exists(arg_path):
-        raw_args = yaml.load(open(arg_path), Loader=yaml.FullLoader)
-
-        # make sure YAML file nested less than 2 layers
-        if nested_dic(raw_args):
-            raise Exception("Format error, please rearrange you parameters in input YAML file")
-
-    else:
-        raise Exception("couldn\'t find argument file {}".format(arg_path))
-
-    return raw_args
+def get_field(dic, key, required=True):
+    if required:
+        assert key in dic, 'expected {} to be defined in experiment'.format(key)
+    return dic[key] if key in dic else None
 
 def islist(elem):
     return type(elem) is list or type(elem) is tuple
+
+def alloc_resource(config):
+    """Allocate resource based on configuration.
+
+    Args:
+        config: configuration file
+    """
+    pass
+
+def load_arg(arg_path):
+    if os.path.exists(arg_path):
+        arg = yaml.load(open(arg_path), Loader=yaml.FullLoader)
+    else:
+        raise Exception("couldn\'t find argument file {}".format(arg_path))
+    return arg
+
+def load_config(config_path):
+    if os.path.exists(config_path):
+        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
+    else:
+        print("WARNING: couldn\'t find configuration file {}, load default configuration instead".format(config_path))
+        try:
+            default_config = wget.download('https://raw.githubusercontent.com/aaronyun/idiot_ML/master/example/config.yml', './config.yml')
+            config = yaml.load(open(default_config), Loader=yaml.FullLoader)
+        except :
+            raise Exception("can\'t download configuration file from Github, please check your network connection")
+    return config
+
+def nested_dic(dic):
+    """Check whether a python dictionary nested more than two layers."""
+    state = False
+    for top_k, top_v in dic.items():
+        if isinstance(top_v, dict):
+            for k, v in top_v.item():
+                if isinstance(v, dict):
+                    state = True
+    return state
 
 def cross_product_hparams(hparams):
     """Get all possible permutations of hyper-parameter values.
@@ -85,44 +102,28 @@ def cross_product_hparams(hparams):
         else:
             hparam_values.append([elem])
 
-    expanded_hparams = itertools.product(*hparam_values)
+    expanded_hparams = itertools.product(*hparam_values) 
 
-    # have to do this in order to know length
-    expanded_hparams, dup_expanded = itertools.tee(expanded_hparams, 2)
-    expanded_hparams = list(expanded_hparams)
-    num_cases = len(list(dup_expanded))
+    return expanded_hparams # 2-d tuple
 
-    return expanded_hparams, num_cases
+def construct_cmd(keys, value_suits):
+    """
 
-# def assemble_suit(raw_dic):
-#     """Get cross product of all parameters and assemble into suits.
-
-#     Args:
-#         raw_dic: a python dictionary containing arguments read from yaml file,
-
-#     Returns:
-#         suits:
-
-#     Exception:
-#     """
-#     command = get_field(raw_dic, 'CMD')
-#     para = get_field(raw_dic, 'PARA', required=False)
-
-    
-
-    
-
-#     return suits
-
-def construct_cmd(suit):
-    cmd = ''
-    for key, val in suit.items():
-        if type(val) is bool:
-            if val is True:
-                cmd += '--{} '.format(key)
-        elif val != 'None':
-            cmd += '--{} {} '.format(key, val)
-    return cmd
+    Args:
+        keys: list
+        value_suits: 2-d tuple
+    """
+    cmd_suits =[]
+    for suit in value_suits:
+        cmd = ''
+        for i, val in enumerate(suit):
+            if type(val) is bool:
+                if val is True:
+                    cmd += '--{} '.format(keys[i])
+            elif val != None:
+                cmd += '--{} {} '.format(keys[i], val)
+        cmd_suits.append(cmd)
+    return cmd_suits
 
 def exec_cmd(cmd):
     """
@@ -133,8 +134,8 @@ def exec_cmd(cmd):
         message = result.stderr.decode("utf-8")
         print(message)
 
-def run_experiment(model, arg_suits):
-    """Run experiment based on given model and argument suits.
+def run_experiment(config, cmd, model, cmd_suits):
+    """
 
     Note that model is a plain string not any type of I/O stream, and arg_suits is a list of parameter suit.
 
@@ -156,12 +157,24 @@ def run_experiment(model, arg_suits):
         raise Exception("couldn\'t find model file {}".format(model))
 
 if __name__ == '__main__':
+    # Load argument and configurations
+    exp = load_arg(ARGS.exp_yml)
+    config = load_config(ARGS.config_yml)
 
-    # Load argument file
-    raw_args = load_yml(ARGS.arg_yml)
+    # Check argument file and load content
+    if not nested_dic(exp):
+        # get required field from argument file
+        cmd = get_field(exp, 'CMD', required=True) # string
+        model = get_field(exp, 'MODEL', required=True) # string(path)
+        hpara = get_field(exp, 'PARA') # plain dictonary
+    else:
+        raise Exception("the content of input argument file should\'t nested more than 2 layers")
 
-    # Prepare all possible argument suits
-    arg_suits = assemble_suit(raw_args)
+    # Cross product hyper-parameters
+    hpara_keys = hpara.keys()
+    hpara_suits = cross_product_hparams(hpara)
+    # Construct hyper-parameter suits into command line arguments
+    hcmd_suits = construct_cmd(hpara_keys, hpara_suits)
 
-    # Run experiment
-    run_experiment(arg_suits)
+    # Execution
+    run_experiment(config, cmd, model, hcmd_suits)
