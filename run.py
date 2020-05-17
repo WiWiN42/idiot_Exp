@@ -28,6 +28,7 @@ from __future__ import print_function
 import os
 import argparse
 import subprocess
+import multiprocessing as mp
 import yaml
 import itertools
 import wget
@@ -146,13 +147,20 @@ def run_experiment(config, cmd, model, cmd_suits):
     Exception:
 
     """
+    #TODO allocate resource for this round of experiment
+    resource_config = get_field(config, 'RESOURCE')
+    pool_config = get_field(config, 'POOL')
+
     # check model file existence
     if os.path.exists(model):
-        for suit in arg_suits:
+        pool = mp.Pool(processes=pool_config['worker'])
+        for suit in cmd_suits:
             # construct commands
-            cmd = construct_cmd(model, suit)
+            command= cmd + model + suit
             # execute constructed command
-            exec_cmd(cmd)
+            pool.apply_async(exec_cmd, command)
+        pool.close()
+        pool.join()
     else:
         raise Exception("couldn\'t find model file {}".format(model))
 
