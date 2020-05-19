@@ -1,31 +1,50 @@
-This is for you idiot who run experiments like a a***. Alright, you are not idoit so that you will use this to make your experiments flow.
+# idiot_Exp
 
-## Usage
+This project aims to simplify the Machine Learning experiment routine with top-level controlling.
 
-Follow these rule:
-- get down your training script
-- prepare your arguments in yaml, let's say-args.yml
-- put this into your project folder
-- run your experiment: python run.py -a args.yml
+The ```run.py``` can do two things for now: 
+- experiment running
+- hyper-parameter sweeping
 
-## Code Logic
+## Hyper-parameter sweep
 
-1. Read argument file from command line (format specified)
-2. Construct argument suit based on user's and default argument file
-3. Run model on every argument suit
+To sweep the best hyper-parameter set for your model, do the following three steps:
 
-## Argument Format
+1. copy ```run.py``` to your project root
 
-The arguments should stored in YAML file. There are two kind of argument file:
-- default arguments
-- user's arguments
+2. prepare the experimental setting file like this
 
-run.py will detect whether the user argument file contains 'MODEL' fild, since model file must be specified in user's argument. Then it will check out "COMMAND' fild to figure out what kind of compiler user would like to use to run model script, if there is no 'COMMAND' fild in user's argument file, the program will use defalt, that is 'python3'
+```yaml
+resource:
+  gpu: [1,2]
+  worker: 2
 
-## Implementation Log
+command: 'python3'
+model: './SAA-ZSL/gan/base.py'
+hyperparameter:
+  dataroot: 'path to your dataset'
+  dataset: ['AWA', 'CUB']
+  lr: [0.1, 0.2]
+```
 
-### Todo
+Requirements:
+- the top-level keys are all required since all of them are critical for experiments
+- you should never nested the file content more than two layers, e.g.
+```yaml
+hyperparamter:
+    dataset:
+        raw_dataset: some_dataset
+        num_dataset: n
+```
+- worker refers to how many run you would like to spawn, this number is limited by your resource, e.g. if you only have one GPU with 12G memories and a single run of your model will consume 5G, you should spcify worker to be 2
 
-### Obstacle
+3. execute ```run.py``` with your file
 
-- determine the memory of a round of experiment needed so that we can take advantage of GPU capability
+```bash
+> python run.py -e exp.yml
+```
+
+# Todo
+
+- [ ] experiment with multi model
+- [ ] save run's result distinctvely 
