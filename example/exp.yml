@@ -1,0 +1,10 @@
+resource:
+  gpu: [1,2]
+  worker: 2
+
+command: 'python3'
+model: './SAA-ZSL/gan/base.py'
+hyperparameter:
+  dataroot: 'path to your dataset'
+  dataset: ['AWA', 'CUB']
+  lr: [0.1, 0.2]

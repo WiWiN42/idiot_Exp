@@ -1,6 +1,0 @@
-RESOURCE:
-  cpu: 
-  gpu:
-  mem:
-POOL:
-  worker: 3

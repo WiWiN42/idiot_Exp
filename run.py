@@ -1,78 +1,22 @@
-"""
-Copyright 2020 Chongqing University
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-"""
-
 from __future__ import print_function
 
 import os
 import argparse
-import subprocess
-import multiprocessing as mp
 import yaml
 import itertools
-import wget
+import subprocess
+import multiprocessing as mp
 
 parser = argparse.ArgumentParser(description='Experiment runner')
-parser.add_argument('--exp_yml', '-a', type=str, default='', help='arguments yaml file')
-# parser.add_argument('--exp_name', type=str, default='', help='the name for a round of experiment')
-parser.add_argument('--config_yml', '-c', type=str, default='', help='configuration yaml file')
+parser.add_argument('--exp_yml', '-e', type=str, default='', help='arguments yaml file')
 ARGS = parser.parse_args()
 
-def get_field(dic, key, required=True):
-    if required:
-        assert key in dic, 'expected {} to be defined in experiment'.format(key)
-    return dic[key] if key in dic else None
-
-def islist(elem):
-    return type(elem) is list or type(elem) is tuple
-
-def alloc_resource(config):
-    """Allocate resource based on configuration.
-
-    Args:
-        config: configuration file
-    """
-    pass
-
-def load_arg(arg_path):
-    if os.path.exists(arg_path):
-        arg = yaml.load(open(arg_path), Loader=yaml.FullLoader)
+def load_yml(yml_path):
+    if os.path.exists(yml_path):
+        arg = yaml.load(open(yml_path), Loader=yaml.FullLoader)
     else:
-        raise Exception("couldn\'t find argument file {}".format(arg_path))
+        raise Exception("couldn\'t find YAML file {}".format(yml_path))
     return arg
-
-def load_config(config_path):
-    if os.path.exists(config_path):
-        config = yaml.load(open(config_path), Loader=yaml.FullLoader)
-    else:
-        print("WARNING: couldn\'t find configuration file {}, load default configuration instead".format(config_path))
-        try:
-            default_config = wget.download('https://raw.githubusercontent.com/aaronyun/idiot_ML/master/example/config.yml', './config.yml')
-            config = yaml.load(open(default_config), Loader=yaml.FullLoader)
-        except :
-            raise Exception("can\'t download configuration file from Github, please check your network connection")
-    return config
 
 def nested_dic(dic):
     """Check whether a python dictionary nested more than two layers."""
@@ -83,6 +27,11 @@ def nested_dic(dic):
                 if isinstance(v, dict):
                     state = True
     return state
+
+def get_field(dic, key, required=True):
+    if required:
+        assert key in dic, 'expected {} to be defined in experiment'.format(key)
+    return dic[key] if key in dic else None
 
 def cross_product_hparams(hparams):
     """Get all possible permutations of hyper-parameter values.
@@ -98,33 +47,32 @@ def cross_product_hparams(hparams):
 
     # turn every hyperparam into a list, to prep for itertools.product
     for elem in hparams.values():
-        if islist(elem):
+        if type(elem) is list:
             hparam_values.append(elem)
         else:
             hparam_values.append([elem])
 
     expanded_hparams = itertools.product(*hparam_values) 
 
-    return expanded_hparams # 2-d tuple
+    return expanded_hparams #!!!!!!不懂
 
-def construct_cmd(keys, value_suits):
+def construct_cmd(keys, value_sets):
     """
-
     Args:
         keys: list
-        value_suits: 2-d tuple
+        value_sets: 2-d tuple
     """
-    cmd_suits =[]
-    for suit in value_suits:
-        cmd = ''
-        for i, val in enumerate(suit):
+    cmd_sets =[]
+    for _set in value_sets:
+        cmd = []
+        for i, val in enumerate(_set):
             if type(val) is bool:
                 if val is True:
-                    cmd += '--{} '.format(keys[i])
+                    cmd.append('--{} '.format(keys[i]))
             elif val != None:
-                cmd += '--{} {} '.format(keys[i], val)
-        cmd_suits.append(cmd)
-    return cmd_suits
+                cmd.append('--{} {} '.format(keys[i], val))
+        cmd_sets.append(cmd)
+    return cmd_sets
 
 def exec_cmd(cmd):
     """
@@ -135,28 +83,19 @@ def exec_cmd(cmd):
         message = result.stderr.decode("utf-8")
         print(message)
 
-def run_experiment(config, cmd, model, cmd_suits):
-    """
-
-    Note that model is a plain string not any type of I/O stream, and arg_suits is a list of parameter suit.
-
-    Args:
-        model: file path to target model file
-        arg_suits: cross product of input argument yaml file
-
-    Exception:
-
-    """
-    #TODO allocate resource for this round of experiment
-    resource_config = get_field(config, 'RESOURCE')
-    pool_config = get_field(config, 'POOL')
+def run_experiment(resource, cmd, model, cmd_sets):
+    # allocate gpu
+    gpu_id = get_field(resource, 'gpu')
+    if not gpu_id is None:
+        device = 'CUDA_VISIBLE_DEVICESE = {}'.format(gpu_id)
+    worker = get_field(resource, 'worker', required=True)
 
     # check model file existence
     if os.path.exists(model):
-        pool = mp.Pool(processes=pool_config['worker'])
-        for suit in cmd_suits:
+        pool = mp.Pool(processes=worker)
+        for suit in cmd_sets:
             # construct commands
-            command= cmd + model + suit
+            command = [device, cmd, model] + suit
             # execute constructed command
             pool.apply_async(exec_cmd, command)
         pool.close()
@@ -165,24 +104,24 @@ def run_experiment(config, cmd, model, cmd_suits):
         raise Exception("couldn\'t find model file {}".format(model))
 
 if __name__ == '__main__':
-    # Load argument and configurations
-    exp = load_arg(ARGS.exp_yml)
-    config = load_config(ARGS.config_yml)
+    # load argument and configurations
+    exp_config = load_yml(ARGS.exp_yml)
 
-    # Check argument file and load content
-    if not nested_dic(exp):
-        # get required field from argument file
-        cmd = get_field(exp, 'CMD', required=True) # string
-        model = get_field(exp, 'MODEL', required=True) # string(path)
-        hpara = get_field(exp, 'PARA') # plain dictonary
-    else:
-        raise Exception("the content of input argument file should\'t nested more than 2 layers")
+    # check file format
+    if nested_dic(exp_config):
+        raise Exception("content of {} should\'t nested more than 2 layers".format(ARGS.exp_yml))
 
-    # Cross product hyper-parameters
-    hpara_keys = hpara.keys()
-    hpara_suits = cross_product_hparams(hpara)
-    # Construct hyper-parameter suits into command line arguments
-    hcmd_suits = construct_cmd(hpara_keys, hpara_suits)
+    # get required field from experiment configuration file
+    resource = get_field(exp_config, 'resource', required=True)
+    cmd = get_field(exp_config, 'cmd', required=True) # string
+    model = get_field(exp_config, 'model', required=True) # string(path)
+    hparas = get_field(exp_config, 'hyperparameter', required=True)
+
+    # cross product hyper-parameters
+    hpara_keys = hparas.keys() # <class 'dict_keys'>
+    hpara_sets = cross_product_hparams(hparas) #!!!
+    # Construct hyper-parameter into python command
+    hcmd_sets = construct_cmd(hpara_keys, hpara_sets)
 
     # Execution
-    run_experiment(config, cmd, model, hcmd_suits)
+    run_experiment(resource, cmd, model, hcmd_sets)
