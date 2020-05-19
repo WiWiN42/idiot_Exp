@@ -10,9 +10,9 @@ The ```run.py``` can do two things for now:
 
 To sweep the best hyper-parameter set for your model, do the following three steps:
 
-1. copy ```run.py``` to your project root
+### 1. copy ```run.py``` to your project root
 
-2. prepare the experimental setting file like this
+### 2. prepare the experimental setting file like this
 
 ```yaml
 resource:
@@ -38,7 +38,7 @@ hyperparamter:
 ```
 - worker refers to how many run you would like to spawn, this number is limited by your resource, e.g. if you only have one GPU with 12G memories and a single run of your model will consume 5G, you should spcify worker to be 2
 
-3. execute ```run.py``` with your file
+### 3. execute ```run.py``` with your file
 
 ```bash
 > python run.py -e exp.yml
